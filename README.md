@@ -55,65 +55,62 @@ CodeRAG's system architecture separates concerns into a modular ingestion layer,
 
 ```mermaid
 graph TB
+    %% Styling configurations
     classDef default fill:#161b22,stroke:#30363d,color:#e6edf3,stroke-width:1px;
     classDef highlight fill:#1f6feb,stroke:#58a6ff,color:#ffffff,stroke-width:1px;
     classDef db fill:#2ea043,stroke:#3fb950,color:#ffffff,stroke-width:1px;
     classDef external fill:#8b949e,stroke:#30363d,color:#ffffff,stroke-dasharray: 5 5;
 
-    subgraph CLIENT ["Frontend (Single Page Application)"]
-        UI["HTML5 / JS / Vanilla CSS Dashboard"]
-        SSE_Client["EventSource Client (SSE Stream)"]
+    subgraph CLIENT ["1. Presentation Layer (Client)"]
+        UI["Web SPA Dashboard <br>(HTML5 / CSS / Vanilla JS)"]:::highlight
+        SSE_Client["SSE EventSource Client <br>(Token Stream Handler)"]:::default
     end
 
-    subgraph BACKEND ["Backend (FastAPI Web Server)"]
-        API["FastAPI App (main.py)"]
-        Router["Router (routes.py)"]
-        Lifespan["lifespan Manager"]
-        
-        subgraph ENGINE ["LangGraph Orchestration"]
-            Graph["StateGraph (graph.py)"]
-            Node_HyDE["HyDE Transform Node"]
-            Node_Retrieve["Hybrid Retrieval Node"]
-            Node_Rerank["Cross-Encoder Rerank Node"]
-            Node_Generate["LLM Answer Generator Node"]
-        end
+    subgraph API_LAYER ["2. API & Controller Layer"]
+        FastAPI["FastAPI Web Server <br>(main.py / routes.py)"]:::highlight
+        Bgtask["Background Workers <br>(pygit2 clone & cleanups)"]:::default
     end
 
-    subgraph STORAGE ["Storage & Vector DB"]
-        Qdrant[("Qdrant Vector DB")]:::db
-        Local_Clone["Local Repository Clone Directory (/app/repo)"]
+    subgraph ORCHESTRATION ["3. Orchestration Layer (State Machine)"]
+        Graph["LangGraph State Engine <br>(graph.py)"]:::highlight
+        Node_HyDE["HyDE Transformation Node"]:::default
+        Node_Retr["Hybrid Retrieval Node"]:::default
+        Node_Rerank["CPU Rerank Node"]:::default
+        Node_Gen["Answer Generation Node"]:::default
     end
 
-    subgraph EXTERNAL ["External Integrations"]
-        GitHost["Git Provider (GitHub/GitLab)"]:::external
-        LLM_Cloud["Cloud LLM (Groq / OpenAI)"]:::external
-        LangSmith["Observability (LangSmith Trace)"]:::external
+    subgraph STORAGE ["4. Storage & Processing Layer"]
+        Parser["Tree-Sitter AST Parser <br>& Chunker"]:::default
+        Qdrant[("Qdrant Vector DB <br>(Local / Cloud)")]:::db
+        Disk["Ephemeral Workspace <br>(Local Clone Space)"]:::db
     end
 
-    %% Flows
-    UI -->|1. Ingest Repo Request| Router
-    Router -->|2. Background Task| GitHost
-    GitHost -->|3. Clone repo| Local_Clone
-    Local_Clone -->|4. Parse AST| Node_Retrieve
-    Node_Retrieve -->|5. Embed & Store| Qdrant
+    subgraph EXTERNAL ["5. External Services Boundary"]
+        GitProvider["Git Host <br>(GitHub/GitLab/etc.)"]:::external
+        LLM["LLM Service <br>(Groq / OpenAI / Ollama)"]:::external
+        LangSmith["LangSmith Tracing <br>(Telemetry & Monitoring)"]:::external
+    end
 
-    UI -->|6. Question Request| SSE_Client
-    SSE_Client -->|7. SSE Stream Request| Router
-    Router -->|8. Run Graph| Graph
+    %% Connection flows
+    UI -->|JSON requests| FastAPI
+    UI -->|Listen to SSE| SSE_Client
     
-    %% Graph Nodes Flow
+    FastAPI -->|Enqueue clone task| Bgtask
+    Bgtask -->|Clone repo| GitProvider
+    Bgtask -->|Write checkout| Disk
+    Disk -->|Read files| Parser
+    Parser -->|Parse & Embed| Qdrant
+    
+    FastAPI -->|Trigger query run| Graph
     Graph --> Node_HyDE
-    Node_HyDE -->|Query Extension| Node_Retrieve
-    Node_Retrieve -->|Hybrid Similarity Scan| Qdrant
-    Node_Retrieve -->|Candidates| Node_Rerank
-    Node_Rerank -->|Reranked context| Node_Generate
-    
-    Node_Generate -->|9. SSE Tokens| SSE_Client
-    
-    %% Tracing / LLM API
-    Node_HyDE -.->|Hypothetical code| LLM_Cloud
-    Node_Generate -.->|Answer Synthesis| LLM_Cloud
-    Graph -.->|Trace logs| LangSmith
+    Node_HyDE -->|Query Expansion| LLM
+    Node_HyDE --> Node_Retr
+    Node_Retr -->|Hybrid Similarity Scan| Qdrant
+    Node_Retr --> Node_Rerank
+    Node_Rerank --> Node_Gen
+    Node_Gen -->|Stream tokens| SSE_Client
+    Node_Gen -->|Generate answer| LLM
+    Graph -.->|Telemetry traces| LangSmith
 ```
 
 ---
@@ -123,74 +120,77 @@ graph TB
 The diagram below details the sequence of execution for repository indexing (ingestion) and real-time query answering (SSE streaming).
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Developer
-    participant UI as Browser SPA
-    participant API as FastAPI Server
-    participant Git as Git Client (pygit2)
-    participant Parser as Tree-Sitter Parser
-    participant DB as Qdrant DB
-    participant Graph as LangGraph Engine
-    participant LLM as LLM Provider (Groq/OpenAI)
+graph TD
+    %% Styling configurations
+    classDef startNode fill:#f3f4f6,stroke:#9ca3af,color:#1f2937,stroke-width:2px,font-weight:bold;
+    classDef stepNode fill:#ffffff,stroke:#e5e7eb,color:#374151,stroke-width:1px;
+    classDef decisionNode fill:#fef3c7,stroke:#f59e0b,color:#78350f,stroke-width:1px;
+    classDef successNode fill:#ecfdf5,stroke:#10b981,color:#064e3b,stroke-width:1.5px;
+    classDef failNode fill:#fef2f2,stroke:#ef4444,color:#7f1d1d,stroke-width:1.5px;
 
-    %% Ingestion Lifecycle
-    rect rgb(20, 30, 45)
-        Note over User, DB: Repository Ingestion Lifecycle
-        User->>UI: Enter Git URL & Click 'Index Repo'
-        UI->>API: POST /api/ingest {repo_url}
-        API->>API: Clear previous vector collection
-        API->>Git: Clone repository to local directory
-        Git-->>API: Repository cloned successfully
-        API->>Parser: Parse files (Tree-sitter AST for Python, Sliding-window for others)
-        Parser-->>API: Returns list of CodeChunks with relative paths metadata
-        API->>DB: Embed batches & Upsert into Qdrant
-        DB-->>API: Chunks indexed successfully
-        API->>API: Queue background folder deletion cleanup
-        API-->>UI: Response: 200 OK (X chunks indexed successfully)
-        UI-->>User: Show success badge & prompt to chat
+    %% Ingestion Flow Subgraph
+    subgraph INGESTION ["A. Repository Ingestion Workflow"]
+        Start_Ingest(["1. Ingestion Request <br>(POST /api/ingest)"]):::startNode
+        Check_Host{"2. Valid Hostname? <br>(ALLOWED_HOSTS check)"}:::decisionNode
+        Clone_Repo["3. Clone Repository <br>(pygit2 depth=1)"]:::stepNode
+        Check_Clone{"4. Clone Success?"}:::decisionNode
+        Parse_Code["5. Extract AST chunks <br>(Tree-Sitter / sliding window)"]:::stepNode
+        Embed_Batch["6. Generate Embeddings <br>(FastEmbed / Voyage)"]:::stepNode
+        Store_DB["7. Batch Upsert <br>(Qdrant Vector DB)"]:::stepNode
+        Cleanup_Disk["8. Delete Temp Clone <br>(Background task)"]:::stepNode
+        Success_Ingest(["9. Return 200 OK <br>(Success Badge)"]):::successNode
+        
+        %% Failures
+        Fail_Host(["Return 400 <br>(Unauthorized Host)"]):::failNode
+        Fail_Clone(["Return 500 <br>(Clone Failed)"]):::failNode
+
+        %% Ingestion Connections
+        Start_Ingest --> Check_Host
+        Check_Host -- Yes --> Clone_Repo
+        Check_Host -- No --> Fail_Host
+        Clone_Repo --> Check_Clone
+        Check_Clone -- Yes --> Parse_Code
+        Check_Clone -- No --> Fail_Clone
+        Parse_Code --> Embed_Batch
+        Embed_Batch --> Store_DB
+        Store_DB --> Cleanup_Disk
+        Cleanup_Disk --> Success_Ingest
     end
 
-    %% Chat Lifecycle
-    rect rgb(30, 20, 30)
-        Note over User, LLM: Chat Query & Answer Generation Lifecycle
-        User->>UI: Input question (e.g. "What does Class X do?")
-        UI->>API: GET /api/chat?question=... (EventSource SSE)
-        API->>Graph: Execute get_rag_graph().astream_events()
+    %% Chat Query Flow Subgraph
+    subgraph CHAT ["B. SSE Chat & Generation Workflow"]
+        Start_Chat(["1. Chat Request <br>(GET /api/chat?question=...)"]):::startNode
+        Init_SSE["2. Open SSE Channel <br>(text/event-stream)"]:::stepNode
+        Node_HyDE_Flow["3. HyDE Query Extension <br>(Hypothetical code sample)"]:::stepNode
+        Node_Retr_Flow["4. Hybrid Retrieval <br>(Qdrant Dense + Filename scan)"]:::stepNode
+        Node_Rerank_Flow["5. CPU Reranking <br>(MiniLM MS-Marco)"]:::stepNode
+        Node_Gen_Flow["6. Synthesise Answer <br>(Stream model)"]:::stepNode
+        Stream_Loop{"7. Stream tokens?"}:::decisionNode
+        Yield_Token["8. Yield Token Event <br>(JSON-encoded content)"]:::stepNode
+        Yield_Done(["9. Yield Done Event <br>& Terminate Connection"]):::successNode
         
-        %% Step 1: HyDE
-        API->>UI: yield status: "🔍 Transforming query..."
-        Graph->>LLM: Generate hypothetical code snippet (HyDE)
-        LLM-->>Graph: Returns hypothetical code
-        
-        %% Step 2: Retrieve
-        API->>UI: yield status: "📂 Searching codebase..."
-        Graph->>DB: Perform dense semantic similarity search
-        DB-->>Graph: Returns top-K code chunks
-        opt Question contains filename hint
-            Graph->>DB: Perform scroll filename filter search
-            DB-->>Graph: Returns targeted chunks
-        end
-        Graph->>Graph: Merge and deduplicate candidates by (source, start_line)
+        %% Error Handler
+        Catch_Err["10. Catch Pipeline Error"]:::failNode
+        Yield_Err(["11. Yield Error Event <br>& Terminate Connection"]):::failNode
 
-        %% Step 3: Rerank
-        API->>UI: yield status: "🎯 Reranking results..."
-        Graph->>Graph: Run local CPU cross-encoder reranking (MiniLM)
+        %% Chat Connections
+        Start_Chat --> Init_SSE
+        Init_SSE --> Node_HyDE_Flow
+        Node_HyDE_Flow --> Node_Retr_Flow
+        Node_Retr_Flow --> Node_Rerank_Flow
+        Node_Rerank_Flow --> Node_Gen_Flow
+        Node_Gen_Flow --> Stream_Loop
+        Stream_Loop -- Yes --> Yield_Token
+        Yield_Token --> Node_Gen_Flow
+        Stream_Loop -- No / Completed --> Yield_Done
         
-        %% Step 4: Generate
-        API->>UI: yield status: "💬 Generating answer..."
-        Graph->>LLM: Stream synthesis using prompt + reranked context
-        loop Token Stream
-            LLM-->>Graph: Yield token chunk
-            Graph-->>API: Capture event: on_chat_model_stream
-            API->>UI: yield event: token (JSON-encoded content)
-        end
-        
-        Graph-->>API: Graph execution complete
-        API->>UI: yield event: done [DONE]
-        UI-->>User: Render formatted markdown response
+        %% Error Handling Paths
+        Node_HyDE_Flow -.->|Error| Catch_Err
+        Node_Retr_Flow -.->|Error| Catch_Err
+        Node_Rerank_Flow -.->|Error| Catch_Err
+        Node_Gen_Flow -.->|Error| Catch_Err
+        Catch_Err --> Yield_Err
     end
-```
 
 ---
 
