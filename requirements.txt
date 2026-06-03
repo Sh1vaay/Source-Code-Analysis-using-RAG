@@ -1,0 +1,46 @@
+# ── Web framework ──────────────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9       # form-data parsing for FastAPI
+sse-starlette==2.1.0          # Server-Sent Events helper
+
+# ── Configuration & validation ────────────────────────────────────────────────
+pydantic-settings==2.3.1
+python-dotenv==1.0.1
+
+# ── LangChain core ────────────────────────────────────────────────────────────
+langchain>=0.2.6,<0.3.0
+langchain-core>=0.2.22,<0.3.0
+langchain-community>=0.2.6,<0.3.0
+langgraph>=0.1.14,<0.2.0
+
+# ── LLM providers  (pick one — all have free tiers) ──────────────────────────
+langchain-groq>=0.1.6         # Groq: free tier (Llama-3, Mixtral) — RECOMMENDED
+langchain-openai>=0.1.14      # OpenAI: optional, set USE_OPENAI=true in .env
+langchain-ollama>=0.1.1       # Ollama: fully local, 100% free — no API key needed
+# Uncomment whichever you prefer in .env → LLM_PROVIDER=groq|openai|ollama
+
+# ── Embeddings (local / free by default) ─────────────────────────────────────
+fastembed==0.3.1               # Local ONNX embeddings — BAAI/bge-small-en-v1.5 (default, free)
+sentence-transformers==3.0.1   # SentenceTransformers — for cross-encoder reranking
+
+# ── Vector store ──────────────────────────────────────────────────────────────
+qdrant-client==1.10.1          # Qdrant — local in-memory or Docker
+
+# ── Code parsing / ingestion ──────────────────────────────────────────────────
+pygit2==1.15.0                 # libgit2 bindings — replaces GitPython
+tree-sitter==0.22.3            # AST parsing
+tree-sitter-python==0.21.0     # Python grammar for Tree-sitter
+
+# ── Evaluation ────────────────────────────────────────────────────────────────
+ragas==0.1.14                  # RAG evaluation metrics
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+httpx==0.27.0
+aiofiles==23.2.1
+rich==13.7.1                   # pretty console output / status messages
+
+# ── Production server ─────────────────────────────────────────────────────────
+gunicorn==22.0.0
+
+-e .

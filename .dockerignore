@@ -1,0 +1,51 @@
+# ── Python cache & compiled files ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ── Sensitive / config files ──────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Local data directories ─────────────────────────────────────────────────────
+repo/
+qdrant_data/
+qdrant_storage/
+
+# ── Development & editor files ────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# ── Testing & CI ──────────────────────────────────────────────────────────────
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ── Version control ───────────────────────────────────────────────────────────
+.git/
+.gitignore
+
+# ── Research / notebooks ──────────────────────────────────────────────────────
+research/
+
+# ── Docs (not needed in container) ───────────────────────────────────────────
+*.md
+LICENSE

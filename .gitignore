@@ -1,0 +1,131 @@
+# ── Python / Compilation / Cache ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-wheel-metadata/
+
+# ── Virtual Environments & Versioning ──────────────────────────────────────────
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+.python-version
+.poetry/
+.pdm.toml
+pdm.lock
+.pypirc
+
+# ── Security & Secret Exclusions (Crucial for production security) ────────────
+# Ignore API keys, passwords, and service account keys
+*secret*
+*credential*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.der
+*.csr
+*.cer
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*.pub
+/gcp-key.json
+/aws-credentials
+
+# ── Ingested Source Code & Local Vector Storage ──────────────────────────────
+# Cloned source repos (to prevent accidental leaks of external codebases)
+repo/
+/repo
+**/repo/
+research/test_repo/*
+research/data/*
+
+# Vector DB storage & local metadata
+db/
+qdrant_data/
+qdrant_storage/
+/qdrant_data/
+/qdrant_storage/
+
+# ── Docker Overrides ──────────────────────────────────────────────────────────
+# Local docker development overrides that shouldn't be pushed
+docker-compose.override.yml
+
+# ── Testing & Code Quality ────────────────────────────────────────────────────
+.ipynb_checkpoints
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+htmlcov/
+
+# ── Node.js / Frontend Assets (if package.json is added) ─────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.yarn/
+package-lock.json
+
+# ── IDEs / Editors ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+.project
+.pydevproject
+.settings/
+
+# ── OS Files ──────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ── Databases & Log Files ─────────────────────────────────────────────────────
+*.log
+*.sqlite
+db.sqlite3
+db.sqlite3-journal

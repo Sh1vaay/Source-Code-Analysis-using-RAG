@@ -1,0 +1,39 @@
+services:
+  # ── Qdrant Vector Database ─────────────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:v1.10.0
+    container_name: coderag_qdrant
+    ports:
+      - "6333:6333"   # HTTP REST API
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── CodeRAG Application ────────────────────────────────────────────────────
+  app:
+    build: .
+    container_name: coderag_app
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Override Qdrant URL to point to the Docker service
+      QDRANT_URL: http://qdrant:6333
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    volumes:
+      - ./repo:/app/repo     # clone directory
+    restart: unless-stopped
+
+volumes:
+  qdrant_data:

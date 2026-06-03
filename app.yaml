@@ -1,0 +1,2 @@
+runtime: python312
+entrypoint: gunicorn -w 2 -k uvicorn.workers.UvicornWorker src.api.main:app --bind :8080
