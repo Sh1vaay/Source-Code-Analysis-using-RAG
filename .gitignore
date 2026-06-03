@@ -127,5 +127,9 @@ Thumbs.db
 # ── Databases & Log Files ─────────────────────────────────────────────────────
 *.log
 *.sqlite
-db.sqlite3
 db.sqlite3-journal
+
+# ── Documentation Template Files ──────────────────────────────────────────────
+project-doc-template.txt
+IMPLEMENTATION_DETAILS.md
+RESUME_POINTS.md
